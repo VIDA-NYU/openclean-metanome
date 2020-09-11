@@ -1,0 +1,3 @@
+openclean-core
+Shapely>=1.7.0
+datamart-profiler>=0.6.1
