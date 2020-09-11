@@ -14,8 +14,7 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    'openclean-core',
-    'Shapely>=1.7.0'
+    'openclean-core==0.1.0'
 ]
 
 
