@@ -9,11 +9,11 @@
 wrapper.
 """
 
-import os
+from abc import ABCMeta, abstractmethod
 
 from typing import List, Tuple
 
-import openclean_metanome.engine.proc as proc
+from openclean_metanome.engine.arguments import RunArg
 
 
 """Environment variables to configure the Metanome engine."""
@@ -21,38 +21,26 @@ import openclean_metanome.engine.proc as proc
 METANOME_JARPATH = 'METANOME_JARPATH'
 
 
-class MetanomeEngine(object):
+class MetanomeEngine(metaclass=ABCMeta):
     """The metanome engine is responsible for running algorithms that are
     supported by the Java wrapper. The engine may use different execution
-    backends in the future. For now we executet the Matenome.jar file using
-    subprocess.
+    backends.
     """
-    def __init__(self, jarfile: str = None):
-        """Initialize the path to the Metanome.jar file. If no value is given
-        an attempt is made to read the value from the respective environment
-        variable.
-
-        Parameters
-        ----------
-        jarfile: str
-            Path to the Matenome.jar file on local disk.
-        """
-        if jarfile is None:
-            jarfile = os.environ.get(METANOME_JARPATH, 'Metanome.jar')
-        self.jarfile = jarfile
-
-    def run(self, args: List[str]) -> Tuple[int, str]:
+    @abstractmethod
+    def run(self, args: List[RunArg], rundir: str) -> Tuple[int, str]:
         """Run a Metanome algorithm using the Java wrapper with the given
         arguments. Returns a tuple of exit code and captured outputs. An exit
         code of 0 indicates success.
 
         Parameters
         ----------
-        args: list
+        args: list of openclean_metanome.engine.arguments.RunArg
             List of arguments for the Java wrapper.
+        rundir: string
+            Path to local directory for run input and output files.
 
         Returns
         -------
         int, str
         """
-        return proc.run_algorithm(jarfile=self.jarfile, args=args)
+        raise NotImplementedError()  # pragma: noqa

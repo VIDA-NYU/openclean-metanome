@@ -13,6 +13,7 @@ is a unique column combination doscovery algorithm.
 import json
 import os
 import pandas as pd
+import shutil
 import tempfile
 
 from typing import List, Tuple
@@ -22,9 +23,16 @@ from openclean.profiling.constraints.ucc import (
     UniqueColumnSet, UniqueColumnCombinationFinder
 )
 
+from openclean_metanome.engine.arguments import RunArg, File, String
 from openclean_metanome.engine.base import MetanomeEngine
+from openclean_metanome.engine.init import get_engine
 
 import openclean_metanome.converter as convert
+
+
+"""Names for input and output files for the HyUCC algorithm."""
+IN_FILE = 'table.csv'
+OUT_FILE = 'results.json'
 
 
 class HyUCC(UniqueColumnCombinationFinder):
@@ -68,7 +76,7 @@ class HyUCC(UniqueColumnCombinationFinder):
         self.validate_parallel = validate_parallel
         self.memory_guardian = memory_guardian
         self.null_equals_null = null_equals_null
-        self.engine = engine if engine is not None else MetanomeEngine()
+        self.engine = engine if engine is not None else get_engine()
 
     def run(self, df: pd.DataFrame) -> List[UniqueColumnSet]:
         """Run the HyUCC algorithm on the given data frame. Returns a list of
@@ -84,57 +92,58 @@ class HyUCC(UniqueColumnCombinationFinder):
 
         Returns
         -------
-        UniqueColumnSet
+        list of UniqueColumnSet
 
         Raises
         ------
         RuntimeError
         """
-        # Create temporary input CSV from given data frame and a temporary file
-        # for algorithm outputs.
-        infile, col_mapping = convert.create_input(df)
-        fh, outfile = tempfile.mkstemp()
-        # Close the output file handle.
-        os.close(fh)
+        # Create temporary run directory for input and output files.
+        rundir = tempfile.mkdtemp()
+        # Create input CSV from given data frame.
+        in_file = os.path.join(rundir, IN_FILE)
+        col_mapping = convert.write_dataframe(df=df, filename=in_file)
         # List of command line arguments based on the current parameters that
         # were provided by the user.
         args = [
-            'hyucc',
-            '--input', infile,
-            '--output', outfile,
-            '--max-ucc-size',
-            str(self.max_ucc_size),
-            '--input-row-limit',
-            str(self.input_row_limit)
+            String('hyucc'),
+            String('--input'),
+            File(IN_FILE),
+            String('--output'),
+            File(OUT_FILE),
+            String('--max-ucc-size'),
+            String(self.max_ucc_size),
+            String('--input-row-limit'),
+            String(self.input_row_limit)
         ]
         if self.validate_parallel:
-            args.append('--validate-parallel')
+            args.append(String('--validate-parallel'))
         if self.memory_guardian:
-            args.append('--memory-guardian')
+            args.append(String('--memory-guardian'))
         if self.null_equals_null:
-            args.append('--null-equals-null')
+            args.append(String('--null-equals-null'))
         try:
             # Run the algorithm. Raise a RunTime error if the returned exit
             # code is not 0.
-            exitcode, outputs = self.engine.run(args)
+            exitcode, outputs = self.engine.run(args=args, rundir=rundir)
             if exitcode != 0:
                 raise RuntimeError(outputs)
             # Read results from the output file and convert them to unique
             # column sets for the original data frame columns..
+            out_file = os.path.join(rundir, OUT_FILE)
             result = list()
-            for columns in convert.read_output(outfile)['columnCombinations']:
+            for columns in convert.read_json(out_file)['columnCombinations']:
                 ucc = UniqueColumnSet([col_mapping[c] for c in columns])
                 result.append(ucc)
             return result
         finally:
-            # Remove the created temporary files.
-            os.remove(infile)
-            os.remove(outfile)
+            # Remove the created run directory.
+            shutil.rmtree(rundir)
 
 
 # -- Unit test engine ---------------------------------------------------------
 
-class HyUCCEngine(object):
+class HyUCCEngine(MetanomeEngine):
     """Fake Metanome engine to simulate run of the HyUCC algorithm. Initialize
     the engine with the expected result which will be written to file. If no
     result file is given the returned exit code will be 255 instead of 0.
@@ -151,7 +160,7 @@ class HyUCCEngine(object):
         """
         self.result = result
 
-    def run(self, args: List[str]) -> Tuple[int, str]:
+    def run(self, args: List[RunArg], rundir: str) -> Tuple[int, str]:
         """Simulate running the HyUCC algorithm. If a result list was given it
         will be written to the output file. If no list was given 255 with an
         error message is returned.
@@ -160,6 +169,8 @@ class HyUCCEngine(object):
         ----------
         args: list
             List of arguments for the HyUCC algorithm.
+        rundir: string
+            Path to local directory for run input and output files.
 
         Returns
         -------
@@ -169,8 +180,8 @@ class HyUCCEngine(object):
             return 255, 'There was an error'
         # Get the result file from the argument list.
         for i in range(len(args)):
-            if args[i] == '--output':
-                outfile = args[i+1]
+            if args[i].value == '--output':
+                outfile = os.path.join(rundir, args[i+1].value)
                 break
         with open(outfile, 'w') as f:
             json.dump({'columnCombinations': self.result}, f)

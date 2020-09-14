@@ -13,7 +13,7 @@ import pandas as pd
 import pytest
 
 from openclean.data.column import Column
-from openclean_metanome.converter import create_input, read_output
+from openclean_metanome.converter import read_json, write_dataframe
 
 
 def test_create_input_file(tmpdir):
@@ -22,7 +22,8 @@ def test_create_input_file(tmpdir):
         data=[[1, None, 'a'], [2, '3', 'b,c']],
         columns=[Column(colid=1, name='A'), 'B', 'A']
     )
-    filename, mapping = create_input(df)
+    filename = os.path.join(tmpdir, 'data/table.csv')
+    mapping = write_dataframe(df=df, filename=filename)
     lines = list()
     with open(filename, 'r') as f:
         for line in f:
@@ -41,4 +42,4 @@ def test_read_output(doc, tmpdir):
     filename = os.path.join(tmpdir, 'out.json')
     with open(filename, 'w') as f:
         json.dump(doc, f)
-    assert read_output(filename) == doc
+    assert read_json(filename) == doc
