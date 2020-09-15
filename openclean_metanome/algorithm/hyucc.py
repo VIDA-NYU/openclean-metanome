@@ -10,20 +10,19 @@ Column Combination Discovery) from the Metanome data profiling library. HyUCC
 is a unique column combination doscovery algorithm.
 """
 
-import json
 import os
 import pandas as pd
 import shutil
 import tempfile
 
-from typing import List, Tuple
+from typing import List
 
 
 from openclean.profiling.constraints.ucc import (
     UniqueColumnSet, UniqueColumnCombinationFinder
 )
 
-from openclean_metanome.engine.arguments import RunArg, File, String
+from openclean_metanome.engine.arguments import File, String
 from openclean_metanome.engine.base import MetanomeEngine
 from openclean_metanome.engine.init import get_engine
 
@@ -35,10 +34,62 @@ IN_FILE = 'table.csv'
 OUT_FILE = 'results.json'
 
 
+def hyucc(
+    df: pd.DataFrame, max_ucc_size: int = -1, input_row_limit: int = -1,
+    validate_parallel: bool = False, memory_guardian: bool = True,
+    null_equals_null: bool = True, verbose: bool = False,
+    engine: MetanomeEngine = None
+) -> List[UniqueColumnSet]:
+    """Run the HyUCC algorithm on a given data frame. HyUCC is a hybrid
+    discovery algorithm for unique column combinations. The algorithm returns a
+    list of discovered column combinations.
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+        Input data frame.
+    max_ucc_size: int, default=-1
+        Defines the maximum size of discovered column sets. Use -1 to
+        return all discovered unique column combinations.
+    input_row_limit: int, default=-1
+        Limit the number of rows from the input file that are being used
+        for column combination discovery. Use -1 for all columns.
+    validate_parallel: bool, default=False
+        If true the algorithm will use multiple threads (one thread per
+        available CPU core).
+    memory_guardian: bool, default=True
+        Activate the memory guarding to prevent out of memory errors,
+    null_equals_null: bool, default=True
+        Result value when comparing two NULL values.
+    verbose: bool, default=False
+        Print captured algorithm outputs to standard output (if True).
+    engine: openclean_metanome.engine.base.MetanomeEngine
+        Runtime engine for all Metanome algorithms. This parameter is
+        primarily included for running unit tests.
+
+    Returns
+    -------
+    list of UniqueColumnSet
+
+    Raises
+    ------
+    openclean_metanome.error.MetanomeError
+    """
+    return HyUCC(
+        max_ucc_size=max_ucc_size,
+        input_row_limit=input_row_limit,
+        validate_parallel=validate_parallel,
+        memory_guardian=memory_guardian,
+        null_equals_null=null_equals_null,
+        verbose=verbose,
+        engine=engine
+    ).run(df)
+
+
 class HyUCC(UniqueColumnCombinationFinder):
-    """HyUCC is a unique column combination doscovery algorithm. HyUCC is a
-    hybrid discovery algorithm which uses the same discovery techniques as the
-    hybrid functional dependency discovery algorithm HyFD. HyUCC discovers all
+    """HyUCC is a hybrid discovery algorithm for unique column combinations.
+    The HyUCC algorithm uses the same discovery techniques as the hybrid
+    functional dependency discovery algorithm HyFD. HyUCC discovers all
     minimal unique column combinationsin a given dataset:
 
     Thorsten Papenbrock and Felix Naumann,
@@ -141,50 +192,3 @@ class HyUCC(UniqueColumnCombinationFinder):
         finally:
             # Remove the created run directory.
             shutil.rmtree(rundir)
-
-
-# -- Unit test engine ---------------------------------------------------------
-
-class HyUCCEngine(MetanomeEngine):
-    """Fake Metanome engine to simulate run of the HyUCC algorithm. Initialize
-    the engine with the expected result which will be written to file. If no
-    result file is given the returned exit code will be 255 instead of 0.
-    """
-    def __init__(self, result: List = None):
-        """Initialize the result list. The list will be written to disk into
-        the output file that is identified by the '--output' parameter in the
-        argument list when running the algorithm.
-
-        Parameters
-        ----------
-        result: list, default=None
-            Result list of unique column combinations.
-        """
-        self.result = result
-
-    def run(self, args: List[RunArg], rundir: str) -> Tuple[int, str]:
-        """Simulate running the HyUCC algorithm. If a result list was given it
-        will be written to the output file. If no list was given 255 with an
-        error message is returned.
-
-        Parameters
-        ----------
-        args: list
-            List of arguments for the HyUCC algorithm.
-        rundir: string
-            Path to local directory for run input and output files.
-
-        Returns
-        -------
-        int, str
-        """
-        if self.result is None:
-            return 255, 'There was an error'
-        # Get the result file from the argument list.
-        for i in range(len(args)):
-            if args[i].value == '--output':
-                outfile = os.path.join(rundir, args[i+1].value)
-                break
-        with open(outfile, 'w') as f:
-            json.dump({'columnCombinations': self.result}, f)
-        return 0, 'Success'

@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from openclean.data.column import Column
-from openclean_metanome.algorithm.hyucc import HyUCC
+from openclean_metanome.algorithm.hyucc import hyucc, HyUCC
 from openclean_metanome.engine.tests import MetanomeTestEngine
 from openclean_metanome.error import MetanomeError
 
@@ -31,9 +31,9 @@ def dataset():
 
 def test_hyucc_algorithm_error(dataset):
     """Test error case for HyUCC wrapper."""
-    hyucc = HyUCC(engine=MetanomeTestEngine())
+    algo = HyUCC(engine=MetanomeTestEngine())
     with pytest.raises(MetanomeError):
-        hyucc.run(dataset)
+        algo.run(dataset)
 
 
 def test_hyucc_algorithm_success(dataset):
@@ -41,11 +41,18 @@ def test_hyucc_algorithm_success(dataset):
     engine.
     """
     result = {'columnCombinations': [['COL1'], ['COL0', 'COL2']]}
-    hyucc = HyUCC(engine=MetanomeTestEngine(result=result))
-    keys = hyucc.run(dataset)
+    algo = HyUCC(engine=MetanomeTestEngine(result=result))
+    keys = algo.run(dataset)
     assert len(keys) == 2
     results = list()
     for ucc in keys:
         results.append(set([c.colid for c in ucc]))
     assert {2} in results
     assert {1, 3} in results
+
+
+def test_hyucc_routine(dataset):
+    """Test running the  HyUCC wrapper using the single execution routine."""
+    result = {'columnCombinations': [['COL1'], ['COL0', 'COL2']]}
+    keys = hyucc(df=dataset, engine=MetanomeTestEngine(result=result))
+    assert len(keys) == 2
