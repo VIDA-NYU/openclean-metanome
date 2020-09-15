@@ -48,7 +48,8 @@ class HyUCC(UniqueColumnCombinationFinder):
     def __init__(
         self, max_ucc_size: int = -1, input_row_limit: int = -1,
         validate_parallel: bool = False, memory_guardian: bool = True,
-        null_equals_null: bool = True, engine: MetanomeEngine = None
+        null_equals_null: bool = True, verbose: bool = False,
+        engine: MetanomeEngine = None
     ):
         """Initialize the algorithm parameters.
 
@@ -67,6 +68,8 @@ class HyUCC(UniqueColumnCombinationFinder):
             Activate the memory guarding to prevent out of memory errors,
         null_equals_null: bool, default=True
             Result value when comparing two NULL values.
+        verbose: bool, default=False
+            Print captured algorithm outputs to standard output (if True).
         engine: openclean_metanome.engine.base.MetanomeEngine
             Runtime engine for all Metanome algorithms. This parameter is
             primarily included for running unit tests.
@@ -76,6 +79,7 @@ class HyUCC(UniqueColumnCombinationFinder):
         self.validate_parallel = validate_parallel
         self.memory_guardian = memory_guardian
         self.null_equals_null = null_equals_null
+        self.verbose = verbose
         self.engine = engine if engine is not None else get_engine()
 
     def run(self, df: pd.DataFrame) -> List[UniqueColumnSet]:
@@ -96,7 +100,7 @@ class HyUCC(UniqueColumnCombinationFinder):
 
         Raises
         ------
-        RuntimeError
+        openclean_metanome.error.MetanomeError
         """
         # Create temporary run directory for input and output files.
         rundir = tempfile.mkdtemp()
@@ -123,11 +127,9 @@ class HyUCC(UniqueColumnCombinationFinder):
         if self.null_equals_null:
             args.append(String('--null-equals-null'))
         try:
-            # Run the algorithm. Raise a RunTime error if the returned exit
-            # code is not 0.
-            exitcode, outputs = self.engine.run(args=args, rundir=rundir)
-            if exitcode != 0:
-                raise RuntimeError(outputs)
+            # Run the algorithm. This will raise a MetanomeError if execution
+            # fails.
+            self.engine.run(args=args, rundir=rundir, verbose=self.verbose)
             # Read results from the output file and convert them to unique
             # column sets for the original data frame columns..
             out_file = os.path.join(rundir, OUT_FILE)

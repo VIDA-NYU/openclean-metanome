@@ -27,10 +27,11 @@ class MetanomeEngine(metaclass=ABCMeta):
     backends.
     """
     @abstractmethod
-    def run(self, args: List[RunArg], rundir: str) -> Tuple[int, str]:
+    def run(self, args: List[RunArg], rundir: str, verbose: bool = False):
         """Run a Metanome algorithm using the Java wrapper with the given
-        arguments. Returns a tuple of exit code and captured outputs. An exit
-        code of 0 indicates success.
+        arguments. This method does not return a result value. The execution
+        results are stored in the respective output files that are passed to
+        Metanome algorithm. A MetanomeError is raised if if execution fails.
 
         Parameters
         ----------
@@ -38,9 +39,11 @@ class MetanomeEngine(metaclass=ABCMeta):
             List of arguments for the Java wrapper.
         rundir: string
             Path to local directory for run input and output files.
+        verbose: bool, default=False
+            Print captured algorithm outputs to standard output (if True).
 
-        Returns
-        -------
-        int, str
+        Raises
+        ------
+        openclean_metanome.error.MetanomeError
         """
         raise NotImplementedError()  # pragma: noqa
