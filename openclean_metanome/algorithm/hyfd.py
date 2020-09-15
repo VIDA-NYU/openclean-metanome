@@ -5,9 +5,19 @@
 # openclean is released under the Revised BSD License. See file LICENSE for
 # full license details.
 
-"""Wrapper to run the HyUCC algorithm (A Hybrid Approach for Efficient Unique
-Column Combination Discovery) from the Metanome data profiling library. HyUCC
-is a unique column combination doscovery algorithm.
+"""Wrapper to run the HyFD algorithm (A Hybrid Approach to Functional
+Dependency Discovery) from the Metanome data profiling library. HyFD is a
+functional dependency discovery algorithm.
+
+Thorsten Papenbrock, Felix Naumann
+A Hybrid Approach to Functional Dependency Discovery
+ACM International Conference on Management of Data (SIGMOD '16)
+
+From the abstract: [...] HyFD combines fast approximation techniques with
+efficient validation techniques in order to findall minimal functional
+dependencies in a given dataset. While operating on compact data structures,
+HyFD not only outperforms all existing approaches, it also scales to much
+larger datasets.
 """
 
 import os
@@ -18,9 +28,10 @@ import tempfile
 from typing import List
 
 
-from openclean.profiling.constraints.ucc import (
-    UniqueColumnSet, UniqueColumnCombinationFinder
+from openclean.profiling.constraints.fd import (
+    FunctionalDependency, FunctionalDependencyFinder
 )
+from openclean.profiling.constraints.ucc import UniqueColumnSet
 
 from openclean_metanome.algorithm.base import IN_FILE, OUT_FILE
 from openclean_metanome.engine.arguments import File, String
@@ -30,26 +41,25 @@ from openclean_metanome.engine.init import get_engine
 import openclean_metanome.converter as convert
 
 
-def hyucc(
-    df: pd.DataFrame, max_ucc_size: int = -1, input_row_limit: int = -1,
+def hyfd(
+    df: pd.DataFrame, max_lhs_size: int = -1, input_row_limit: int = -1,
     validate_parallel: bool = False, memory_guardian: bool = True,
     null_equals_null: bool = True, verbose: bool = False,
     engine: MetanomeEngine = None
-) -> List[UniqueColumnSet]:
-    """Run the HyUCC algorithm on a given data frame. HyUCC is a hybrid
-    discovery algorithm for unique column combinations. The algorithm returns a
-    list of discovered column combinations.
+) -> List[FunctionalDependency]:
+    """Run the HyFD algorithm on a given data frame. HyFD is a hybrid
+    discovery algorithm for functional dependencies.
 
     Parameters
     ----------
     df: pd.DataFrame
         Input data frame.
-    max_ucc_size: int, default=-1
-        Defines the maximum size of discovered column sets. Use -1 to
-        return all discovered unique column combinations.
+    max_lhs_size: int, default=-1
+        Defines the maximum size of the left-hand-side for discovered FDs. Use
+        -1 to ignore size limits on FDs.
     input_row_limit: int, default=-1
         Limit the number of rows from the input file that are being used
-        for column combination discovery. Use -1 for all columns.
+        for functional dependency discovery. Use -1 for all columns.
     validate_parallel: bool, default=False
         If true the algorithm will use multiple threads (one thread per
         available CPU core).
@@ -65,14 +75,14 @@ def hyucc(
 
     Returns
     -------
-    list of UniqueColumnSet
+    list of FunctionalDependency
 
     Raises
     ------
     openclean_metanome.error.MetanomeError
     """
-    return HyUCC(
-        max_ucc_size=max_ucc_size,
+    return HyFD(
+        max_lhs_size=max_lhs_size,
         input_row_limit=input_row_limit,
         validate_parallel=validate_parallel,
         memory_guardian=memory_guardian,
@@ -82,18 +92,18 @@ def hyucc(
     ).run(df)
 
 
-class HyUCC(UniqueColumnCombinationFinder):
-    """HyUCC is a hybrid discovery algorithm for unique column combinations.
-    The HyUCC algorithm uses the same discovery techniques as the hybrid
-    functional dependency discovery algorithm HyFD. HyUCC discovers all
-    minimal unique column combinationsin a given dataset:
+class HyFD(FunctionalDependencyFinder):
+    """HyFD is a hybrid discovery algorithm for functional dependencies.
+    HyFD combines fast approximation techniques with efficient validation
+    techniques in order to findall minimal functional dependencies in a given
+    dataset:
 
-    Thorsten Papenbrock and Felix Naumann,
-    A Hybrid Approach for Efficient Unique Column Combination Discovery,
-    Datenbanksysteme fuer Business, Technologie und Web (BTW 2017),
+    Thorsten Papenbrock, Felix Naumann
+    A Hybrid Approach to Functional Dependency Discovery
+    ACM International Conference on Management of Data (SIGMOD '16)
     """
     def __init__(
-        self, max_ucc_size: int = -1, input_row_limit: int = -1,
+        self, max_lhs_size: int = -1, input_row_limit: int = -1,
         validate_parallel: bool = False, memory_guardian: bool = True,
         null_equals_null: bool = True, verbose: bool = False,
         engine: MetanomeEngine = None
@@ -102,12 +112,12 @@ class HyUCC(UniqueColumnCombinationFinder):
 
         Parameters
         ----------
-        max_ucc_size: int, default=-1
-            Defines the maximum size of discovered column sets. Use -1 to
-            return all discovered unique column combinations.
+        max_lhs_size: int, default=-1
+            Defines the maximum size of the left-hand-side for discovered FDs
+             Use -1 to ignore size limits on FDs.
         input_row_limit: int, default=-1
             Limit the number of rows from the input file that are being used
-            for column combination discovery. Use -1 for all columns.
+            for functional dependency discovery. Use -1 for all columns.
         validate_parallel: bool, default=False
             If true the algorithm will use multiple threads (one thread per
             available CPU core).
@@ -121,7 +131,7 @@ class HyUCC(UniqueColumnCombinationFinder):
             Runtime engine for all Metanome algorithms. This parameter is
             primarily included for running unit tests.
         """
-        self.max_ucc_size = max_ucc_size
+        self.max_lhs_size = max_lhs_size
         self.input_row_limit = input_row_limit
         self.validate_parallel = validate_parallel
         self.memory_guardian = memory_guardian
@@ -129,9 +139,9 @@ class HyUCC(UniqueColumnCombinationFinder):
         self.verbose = verbose
         self.engine = engine if engine is not None else get_engine()
 
-    def run(self, df: pd.DataFrame) -> List[UniqueColumnSet]:
-        """Run the HyUCC algorithm on the given data frame. Returns a list of
-        all discovered unique column sets.
+    def run(self, df: pd.DataFrame) -> List[FunctionalDependency]:
+        """Run the HyFD algorithm on the given data frame. Returns a list of
+        all discovered functional dependencies.
 
         If execution of the Metanome algorithm fails a RuntimeError will be
         raised.
@@ -143,7 +153,7 @@ class HyUCC(UniqueColumnCombinationFinder):
 
         Returns
         -------
-        list of UniqueColumnSet
+        list of FunctionalDependency
 
         Raises
         ------
@@ -157,13 +167,13 @@ class HyUCC(UniqueColumnCombinationFinder):
         # List of command line arguments based on the current parameters that
         # were provided by the user.
         args = [
-            String('hyucc'),
+            String('hyfdc'),
             String('--input'),
             File(IN_FILE),
             String('--output'),
             File(OUT_FILE),
-            String('--max-ucc-size'),
-            String(self.max_ucc_size),
+            String('--max-lhs-size'),
+            String(self.max_lhs_size),
             String('--input-row-limit'),
             String(self.input_row_limit)
         ]
@@ -181,9 +191,12 @@ class HyUCC(UniqueColumnCombinationFinder):
             # column sets for the original data frame columns..
             out_file = os.path.join(rundir, OUT_FILE)
             result = list()
-            for columns in convert.read_json(out_file)['columnCombinations']:
-                ucc = UniqueColumnSet([col_mapping[c] for c in columns])
-                result.append(ucc)
+            for obj in convert.read_json(out_file)['functionalDependencies']:
+                fd = FunctionalDependency(
+                    lhs=UniqueColumnSet([col_mapping[c] for c in obj['lhs']]),
+                    rhs=UniqueColumnSet([col_mapping[c] for c in obj['rhs']])
+                )
+                result.append(fd)
             return result
         finally:
             # Remove the created run directory.

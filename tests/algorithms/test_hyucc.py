@@ -7,26 +7,11 @@
 
 """Unit tests for the HyUCC algorithm wrapper."""
 
-import pandas as pd
 import pytest
 
-from openclean.data.column import Column
 from openclean_metanome.algorithm.hyucc import hyucc, HyUCC
 from openclean_metanome.engine.tests import MetanomeTestEngine
 from openclean_metanome.error import MetanomeError
-
-
-@pytest.fixture
-def dataset():
-    """Simple pandas data frame with one row and three columns."""
-    return pd.DataFrame(
-        data=[[1, 2, 3]],
-        columns=[
-            Column(colid=1, name='A'),
-            Column(colid=2, name='B'),
-            Column(colid=3, name='C')
-        ]
-    )
 
 
 def test_hyucc_algorithm_error(dataset):
