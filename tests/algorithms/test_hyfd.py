@@ -26,8 +26,8 @@ def test_hyfd_algorithm_success(dataset):
     engine.
     """
     result = {'functionalDependencies': [
-        {'lhs': ['COL0', 'COL1'], 'rhs': ['COL2']},
-        {'lhs': ['COL1'], 'rhs': ['COL2']}
+        {'lhs': ['COL0', 'COL1'], 'rhs': 'COL2'},
+        {'lhs': ['COL1'], 'rhs': 'COL0'}
     ]}
     algo = HyFD(engine=MetanomeTestEngine(result=result))
     fds = algo.run(dataset)
@@ -38,13 +38,13 @@ def test_hyfd_algorithm_success(dataset):
         rhs = set([c.colid for c in fd.rhs])
         results.append([lhs, rhs])
     assert [{1, 2}, {3}] in results
-    assert [{2}, {3}] in results
+    assert [{2}, {1}] in results
 
 
 def test_hyfd_routine(dataset):
     """Test running the  HyFD wrapper using the single execution routine."""
     result = {'functionalDependencies': [{
-        'rhs': ['COL1'],
+        'rhs': 'COL1',
         'lhs': ['COL0', 'COL2']
     }]}
     fds = hyfd(df=dataset, engine=MetanomeTestEngine(result=result))

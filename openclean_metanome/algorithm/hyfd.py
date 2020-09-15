@@ -167,7 +167,7 @@ class HyFD(FunctionalDependencyFinder):
         # List of command line arguments based on the current parameters that
         # were provided by the user.
         args = [
-            String('hyfdc'),
+            String('hyfd'),
             String('--input'),
             File(IN_FILE),
             String('--output'),
@@ -194,7 +194,7 @@ class HyFD(FunctionalDependencyFinder):
             for obj in convert.read_json(out_file)['functionalDependencies']:
                 fd = FunctionalDependency(
                     lhs=UniqueColumnSet([col_mapping[c] for c in obj['lhs']]),
-                    rhs=UniqueColumnSet([col_mapping[c] for c in obj['rhs']])
+                    rhs=UniqueColumnSet([col_mapping[obj['rhs']]])
                 )
                 result.append(fd)
             return result
