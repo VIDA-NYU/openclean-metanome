@@ -12,17 +12,19 @@ import os
 import pandas as pd
 import pytest
 
-from openclean.data.column import Column
+from openclean.data.types import Column
 from openclean_metanome.converter import read_json, write_dataframe
 
 
 def test_create_input_file(tmpdir):
     """Test creating an input CSV file from a pandas data frame."""
+    cwd = os.getcwd()
+    os.chdir(tmpdir)
     df = pd.DataFrame(
         data=[[1, None, 'a'], [2, '3', 'b,c']],
         columns=[Column(colid=1, name='A'), 'B', 'A']
     )
-    filename = os.path.join(tmpdir, 'data/table.csv')
+    filename = 'table.csv'
     mapping = write_dataframe(df=df, filename=filename)
     lines = list()
     with open(filename, 'r') as f:
@@ -32,6 +34,7 @@ def test_create_input_file(tmpdir):
     assert mapping['COL0'].colid == 1
     assert mapping['COL1'] == 'B'
     assert mapping['COL2'] == 'A'
+    os.chdir(cwd)
 
 
 @pytest.mark.parametrize('doc', [{'A': 1}, [1, 2, 3, 'D']])
