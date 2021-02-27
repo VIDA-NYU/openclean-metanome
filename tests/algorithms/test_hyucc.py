@@ -34,7 +34,7 @@ def mock_subprocess(monkeypatch):
         doc = {'columnCombinations': [['COL1'], ['COL0', 'COL2']]}
         with open(outputfile, 'w') as f:
             json.dump(doc, f)
-        return Proc(returncode=0, stdout=b'', stderr=b'')
+        return Proc(returncode=0, stdout=b'success', stderr=b'')
 
     monkeypatch.setattr(subprocess, "run", mock_run)
 

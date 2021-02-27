@@ -5,7 +5,7 @@
 # openclean is released under the Revised BSD License. See file LICENSE for
 # full license details.
 
-from typing import Dict
+from typing import Dict, Optional
 
 import os
 import pandas as pd
@@ -14,6 +14,7 @@ import tempfile
 
 from flowserv.controller.serial.workflow.base import SerialWorkflow
 from flowserv.controller.serial.workflow.result import RunResult
+from flowserv.controller.worker.factory import WorkerFactory
 
 import openclean_metanome.config as config
 
@@ -25,7 +26,11 @@ OUT_FILE = 'results.json'
 
 # -- Helper Methods -----------------------------------------------------------
 
-def run_workflow(workflow: SerialWorkflow, arguments: Dict, df: pd.DataFrame) -> RunResult:
+def run_workflow(
+    workflow: SerialWorkflow, arguments: Dict, df: pd.DataFrame,
+    workers: Optional[WorkerFactory] = None, env: Optional[Dict] = None,
+    verbose: Optional[bool] = True
+) -> RunResult:
     """Run a given workflow representing a Metanome profiling algorithm on the
     given data frame.
 
@@ -45,6 +50,13 @@ def run_workflow(workflow: SerialWorkflow, arguments: Dict, df: pd.DataFrame) ->
         Dictionary of algorithm-specific input arguments.
     df: pd.DataFrame
         Input data frame.
+    workers: flowserv.controller.worker.factory.WorkerFactory, default=None
+        Optional worker configuration.
+    env: dict, default=None
+        Optional environment variables that override the system-wide
+        settings., defualt=None
+    verbose: bool, default=True
+        Output run logs if True.
 
     Returns
     -------
@@ -63,8 +75,15 @@ def run_workflow(workflow: SerialWorkflow, arguments: Dict, df: pd.DataFrame) ->
     args['df'] = df
     args['inputfile'] = os.path.join('data', IN_FILE)
     args['outputfile'] = os.path.join('data', OUT_FILE)
+    # Ensuer that the worker factory is set.
+    workers = workers if workers else config.WORKERS(env=env)
     try:
-        r = workflow.run(arguments=args, workers=config.WORKERS(), rundir=rundir)
+        r = workflow.run(arguments=args, workers=workers, rundir=rundir)
+        # Output STODUT and STDERR before raising a potential error.
+        if verbose:
+            for line in r.log:
+                print(line)
+        # Raise error if run execution was not successful.
         r.raise_for_status()
         return r
     finally:

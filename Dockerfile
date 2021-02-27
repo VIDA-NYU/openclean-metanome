@@ -1,3 +1,3 @@
-FROM openjdk:8-jre-alpine
+FROM openjdk:latest
 COPY ./lib/Metanome.jar /lib/
 WORKDIR /

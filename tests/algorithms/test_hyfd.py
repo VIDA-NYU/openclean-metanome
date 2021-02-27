@@ -46,7 +46,7 @@ def test_hyfd_algorithm_success(mock_subprocess, dataset):
     """Test the main functionality of the HyFD wrapper using the test
     engine.
     """
-    fds = hyfd(df=dataset)
+    fds = hyfd(df=dataset, verbose=False)
     assert len(fds) == 2
     results = list()
     for fd in fds:

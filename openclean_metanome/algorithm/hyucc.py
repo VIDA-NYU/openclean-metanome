@@ -10,11 +10,12 @@ Column Combination Discovery) from the Metanome data profiling library. HyUCC
 is a unique column combination doscovery algorithm.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pandas as pd
 
 from flowserv.controller.serial.workflow.base import SerialWorkflow
+from flowserv.controller.worker.factory import WorkerFactory
 from openclean.data.types import Columns
 from openclean.profiling.constraints.ucc import UniqueColumnCombinationFinder
 
@@ -27,7 +28,8 @@ import openclean_metanome.config as config
 def hyucc(
     df: pd.DataFrame, max_ucc_size: int = -1, input_row_limit: int = -1,
     validate_parallel: bool = False, memory_guardian: bool = True,
-    null_equals_null: bool = True
+    null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
+    env: Optional[Dict] = None, verbose: Optional[bool] = True
 ) -> List[Columns]:
     """Run the HyUCC algorithm on a given data frame. HyUCC is a hybrid
     discovery algorithm for unique column combinations. The algorithm returns a
@@ -50,6 +52,13 @@ def hyucc(
         Activate the memory guarding to prevent out of memory errors,
     null_equals_null: bool, default=True
         Result value when comparing two NULL values.
+    workers: flowserv.controller.worker.factory.WorkerFactory, default=None
+        Optional worker configuration.
+    env: dict, default=None
+        Optional environment variables that override the system-wide
+        settings., defualt=None
+    verbose: bool, default=True
+        Output run logs if True.
 
     Returns
     -------
@@ -60,7 +69,10 @@ def hyucc(
         input_row_limit=input_row_limit,
         validate_parallel=validate_parallel,
         memory_guardian=memory_guardian,
-        null_equals_null=null_equals_null
+        null_equals_null=null_equals_null,
+        workers=workers,
+        env=env,
+        verbose=verbose
     ).run(df)
 
 
@@ -77,7 +89,8 @@ class HyUCC(UniqueColumnCombinationFinder):
     def __init__(
         self, max_ucc_size: int = -1, input_row_limit: int = -1,
         validate_parallel: bool = False, memory_guardian: bool = True,
-        null_equals_null: bool = True
+        null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
+        env: Optional[Dict] = None, verbose: Optional[bool] = True
     ):
         """Initialize the algorithm parameters.
 
@@ -96,6 +109,13 @@ class HyUCC(UniqueColumnCombinationFinder):
             Activate the memory guarding to prevent out of memory errors,
         null_equals_null: bool, default=True
             Result value when comparing two NULL values.
+        workers: flowserv.controller.worker.factory.WorkerFactory, default=None
+            Optional worker configuration.
+        env: dict, default=None
+            Optional environment variables that override the system-wide
+            settings., defualt=None
+        verbose: bool, default=True
+            Output run logs if True.
         """
         # Create argument dictionary for running the HyUCC workflow. The workflow
         # expects the following arguments:
@@ -110,13 +130,16 @@ class HyUCC(UniqueColumnCombinationFinder):
         # - memory_guardian: Swith on/off memory guardian
         # - null_equals_null: Control interpretation of null values
         self.args = {
-            'jar': config.JARFILE(),
+            'jar': config.JARFILE(env=env),
             'max_ucc_size': max_ucc_size,
             'input_row_limit': input_row_limit,
             'validate_parallel': '--validate-parallel' if validate_parallel else '',
             'memory_guardian': '--memory-guardian' if memory_guardian else '',
             'null_equals_null': '--null-equals-null' if null_equals_null else ''
         }
+        self.workers = workers
+        self.env = env
+        self.verbose = verbose
 
     def run(self, df: pd.DataFrame) -> List[Columns]:
         """Run the HyUCC algorithm on the given data frame. Returns a list of
@@ -134,7 +157,25 @@ class HyUCC(UniqueColumnCombinationFinder):
         -------
         list of columns
         """
-        r = run_workflow(workflow=workflow, arguments=self.args, df=df)
+        # Define the serial workflow for running the HyUCC algorithm.
+        command = (
+            '${java} -jar "${jar}" hyucc '
+            '--input "${inputfile}" --output "${outputfile}" '
+            '--max-ucc-size ${max_ucc_size} --input-row-limit ${input_row_limit} '
+            '${validate_parallel} ${memory_guardian} ${null_equals_null}'
+        )
+        workflow = SerialWorkflow()\
+            .add_step(func=write_dataframe, output='colmap', varnames={'filename': 'inputfile'})\
+            .add_step(image=config.CONTAINER(env=self.env), commands=[command])\
+            .add_step(func=parse_result, output='uccs')
+        r = run_workflow(
+            workflow=workflow,
+            arguments=self.args,
+            df=df,
+            workers=self.workers,
+            env=self.env,
+            verbose=self.verbose
+        )
         return r.context['uccs']
 
 
@@ -159,19 +200,3 @@ def parse_result(outputfile: str, colmap: Dict) -> List[Columns]:
         ucc = [colmap[c] for c in columns]
         result.append(ucc)
     return result
-
-
-# -- Workflow -----------------------------------------------------------------
-
-"""Define the serial workflow for running the HyUCC algorithm."""
-command = (
-    '${java} -jar "${jar}" hyucc '
-    '--input "${inputfile}" --output "${outputfile}" '
-    '--max-ucc-size ${max_ucc_size} --input-row-limit ${input_row_limit} '
-    '${validate_parallel} ${memory_guardian} ${null_equals_null}'
-)
-
-workflow = SerialWorkflow()\
-    .add_step(func=write_dataframe, output='colmap', varnames={'filename': 'inputfile'})\
-    .add_step(image=config.CONTAINER(), commands=[command])\
-    .add_step(func=parse_result, output='uccs')
