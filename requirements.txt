@@ -1,1 +1,3 @@
-openclean-core==0.1.0
+openclean-core>=0.1.1
+refdata>=0.2.0
+appdirs>=1.4.4

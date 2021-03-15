@@ -1,6 +1,6 @@
 # This file is part of the Data Cleaning Library (openclean).
 #
-# Copyright (C) 2018-2020 New York University.
+# Copyright (C) 2018-2021 New York University.
 #
 # openclean is released under the Revised BSD License. See file LICENSE for
 # full license details.
@@ -14,7 +14,9 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    'openclean-core==0.1.0'
+    'openclean-core>=0.1.1',
+    'refdata>=0.2.0',
+    'appdirs>=1.4.4'
 ]
 
 
@@ -31,7 +33,8 @@ extras_require = {
         'Sphinx',
         'sphinx-rtd-theme'
     ],
-    'tests': tests_require,
+    'tests': tests_require + ['docker'],
+    'dev': tests_require + ['docker']
 }
 
 
@@ -55,7 +58,7 @@ with open('README.rst', 'rt') as f:
 setup(
     name='openclean-metanome',
     version=version,
-    description='OpenClean Metanome Python Package',
+    description='openclean Metanome Python Package',
     long_description=readme,
     long_description_content_type='text/x-rst',
     keywords='data cleaning',
@@ -72,9 +75,9 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python'
     ]
 )

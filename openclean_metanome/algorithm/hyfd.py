@@ -1,6 +1,6 @@
 # This file is part of the Data Cleaning Library (openclean).
 #
-# Copyright (C) 2018-2020 New York University.
+# Copyright (C) 2018-2021 New York University.
 #
 # openclean is released under the Revised BSD License. See file LICENSE for
 # full license details.
@@ -20,32 +20,24 @@ HyFD not only outperforms all existing approaches, it also scales to much
 larger datasets.
 """
 
-import os
+from typing import Dict, List, Optional
+
 import pandas as pd
-import shutil
-import tempfile
 
-from typing import List
+from flowserv.controller.serial.workflow.base import SerialWorkflow
+from flowserv.controller.worker.factory import WorkerFactory
+from openclean.profiling.constraints.fd import FunctionalDependency, FunctionalDependencyFinder
+from openclean_metanome.algorithm.base import run_workflow
+from openclean_metanome.converter import read_json, write_dataframe
 
-
-from openclean.profiling.constraints.fd import (
-    FunctionalDependency, FunctionalDependencyFinder
-)
-from openclean.profiling.constraints.ucc import UniqueColumnSet
-
-from openclean_metanome.algorithm.base import IN_FILE, OUT_FILE
-from openclean_metanome.engine.arguments import File, String
-from openclean_metanome.engine.base import MetanomeEngine
-from openclean_metanome.engine.init import get_engine
-
-import openclean_metanome.converter as convert
+import openclean_metanome.config as config
 
 
 def hyfd(
     df: pd.DataFrame, max_lhs_size: int = -1, input_row_limit: int = -1,
     validate_parallel: bool = False, memory_guardian: bool = True,
-    null_equals_null: bool = True, verbose: bool = False,
-    engine: MetanomeEngine = None
+    null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
+    env: Optional[Dict] = None, verbose: Optional[bool] = True
 ) -> List[FunctionalDependency]:
     """Run the HyFD algorithm on a given data frame. HyFD is a hybrid
     discovery algorithm for functional dependencies.
@@ -67,19 +59,17 @@ def hyfd(
         Activate the memory guarding to prevent out of memory errors,
     null_equals_null: bool, default=True
         Result value when comparing two NULL values.
-    verbose: bool, default=False
-        Print captured algorithm outputs to standard output (if True).
-    engine: openclean_metanome.engine.base.MetanomeEngine
-        Runtime engine for all Metanome algorithms. This parameter is
-        primarily included for running unit tests.
+    workers: flowserv.controller.worker.factory.WorkerFactory, default=None
+        Optional worker configuration.
+    env: dict, default=None
+        Optional environment variables that override the system-wide
+        settings., defualt=None
+    verbose: bool, default=True
+        Output run logs if True.
 
     Returns
     -------
     list of FunctionalDependency
-
-    Raises
-    ------
-    openclean_metanome.error.MetanomeError
     """
     return HyFD(
         max_lhs_size=max_lhs_size,
@@ -87,8 +77,9 @@ def hyfd(
         validate_parallel=validate_parallel,
         memory_guardian=memory_guardian,
         null_equals_null=null_equals_null,
-        verbose=verbose,
-        engine=engine
+        workers=workers,
+        env=env,
+        verbose=verbose
     ).run(df)
 
 
@@ -105,8 +96,8 @@ class HyFD(FunctionalDependencyFinder):
     def __init__(
         self, max_lhs_size: int = -1, input_row_limit: int = -1,
         validate_parallel: bool = False, memory_guardian: bool = True,
-        null_equals_null: bool = True, verbose: bool = False,
-        engine: MetanomeEngine = None
+        null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
+        env: Optional[Dict] = None, verbose: Optional[bool] = True
     ):
         """Initialize the algorithm parameters.
 
@@ -125,26 +116,43 @@ class HyFD(FunctionalDependencyFinder):
             Activate the memory guarding to prevent out of memory errors,
         null_equals_null: bool, default=True
             Result value when comparing two NULL values.
-        verbose: bool, default=False
-            Print captured algorithm outputs to standard output (if True).
-        engine: openclean_metanome.engine.base.MetanomeEngine
-            Runtime engine for all Metanome algorithms. This parameter is
-            primarily included for running unit tests.
+        workers: flowserv.controller.worker.factory.WorkerFactory, default=None
+            Optional worker configuration.
+        env: dict, default=None
+            Optional environment variables that override the system-wide
+            settings, default=None.
+        verbose: bool, default=True
+            Output run logs if True.
         """
-        self.max_lhs_size = max_lhs_size
-        self.input_row_limit = input_row_limit
-        self.validate_parallel = validate_parallel
-        self.memory_guardian = memory_guardian
-        self.null_equals_null = null_equals_null
+        # Create argument dictionary for running the HyFD workflow. The workflow
+        # expects the following arguments:
+        #
+        # - df: Input data frame
+        # - jar: Path to the Metanome.jar file
+        # - inputfile: Path (relative to run directory) to materialize the data frame
+        # - outputfile: Path (relative to run directory) for the algorithm results
+        # - max_lhs_size: Max. number of attributes in LHS for discovered FDs
+        # - input_row_limit: Limit number of input rows that are used for FD discovery
+        # - validate_parallel: Switch on/off parallel execution
+        # - memory_guardian: Swith on/off memory guardian
+        # - null_equals_null: Control interpretation of null values
+        self.args = {
+            'jar': config.JARFILE(env=env),
+            'max_lhs_size': max_lhs_size,
+            'input_row_limit': input_row_limit,
+            'validate_parallel': '--validate-parallel' if validate_parallel else '',
+            'memory_guardian': '--memory-guardian' if memory_guardian else '',
+            'null_equals_null': '--null-equals-null' if null_equals_null else ''
+        }
+        self.workers = workers
+        self.env = env
         self.verbose = verbose
-        self.engine = engine if engine is not None else get_engine()
 
     def run(self, df: pd.DataFrame) -> List[FunctionalDependency]:
-        """Run the HyFD algorithm on the given data frame. Returns a list of
-        all discovered functional dependencies.
+        """Run the HyFD algorithm on the given data frame.
 
-        If execution of the Metanome algorithm fails a RuntimeError will be
-        raised.
+        Returns a list of all discovered functional dependencies. If execution
+        of the Metanome algorithm fails a RuntimeError will be raised.
 
         Parameters
         ----------
@@ -154,50 +162,50 @@ class HyFD(FunctionalDependencyFinder):
         Returns
         -------
         list of FunctionalDependency
-
-        Raises
-        ------
-        openclean_metanome.error.MetanomeError
         """
-        # Create temporary run directory for input and output files.
-        rundir = tempfile.mkdtemp()
-        # Create input CSV from given data frame.
-        in_file = os.path.join(rundir, IN_FILE)
-        col_mapping = convert.write_dataframe(df=df, filename=in_file)
-        # List of command line arguments based on the current parameters that
-        # were provided by the user.
-        args = [
-            String('hyfd'),
-            String('--input'),
-            File(IN_FILE),
-            String('--output'),
-            File(OUT_FILE),
-            String('--max-lhs-size'),
-            String(self.max_lhs_size),
-            String('--input-row-limit'),
-            String(self.input_row_limit)
-        ]
-        if self.validate_parallel:
-            args.append(String('--validate-parallel'))
-        if self.memory_guardian:
-            args.append(String('--memory-guardian'))
-        if self.null_equals_null:
-            args.append(String('--null-equals-null'))
-        try:
-            # Run the algorithm. This will raise a MetanomeError if execution
-            # fails.
-            self.engine.run(args=args, rundir=rundir, verbose=self.verbose)
-            # Read results from the output file and convert them to unique
-            # column sets for the original data frame columns..
-            out_file = os.path.join(rundir, OUT_FILE)
-            result = list()
-            for obj in convert.read_json(out_file)['functionalDependencies']:
-                fd = FunctionalDependency(
-                    lhs=UniqueColumnSet([col_mapping[c] for c in obj['lhs']]),
-                    rhs=UniqueColumnSet([col_mapping[obj['rhs']]])
-                )
-                result.append(fd)
-            return result
-        finally:
-            # Remove the created run directory.
-            shutil.rmtree(rundir)
+        # Define the serial workflow for running the HyFD algorithm.
+        command = (
+            '${java} -jar "${jar}" hyfd '
+            '--input "${inputfile}" --output "${outputfile}" '
+            '--max-lhs-size ${max_lhs_size} --input-row-limit ${input_row_limit} '
+            '${validate_parallel} ${memory_guardian} ${null_equals_null}'
+        )
+        workflow = SerialWorkflow()\
+            .add_step(func=write_dataframe, output='colmap', varnames={'filename': 'inputfile'})\
+            .add_step(image=config.CONTAINER(env=self.env), commands=[command])\
+            .add_step(func=parse_result, output='fds')
+        r = run_workflow(
+            workflow=workflow,
+            arguments=self.args,
+            df=df,
+            workers=self.workers,
+            env=self.env,
+            verbose=self.verbose
+        )
+        return r.context['fds']
+
+
+def parse_result(outputfile: str, colmap: Dict) -> List[FunctionalDependency]:
+    """Parse the result file of the FD discovery run to generate a list of
+    discovered functional dependencies.
+
+    Parameters
+    ----------
+    outputfile: string
+        Path to the output file containing the discovered FDs.
+    colmap: dict
+        Mapping of column names from surrogate names to column names in the
+        input data frame schema.
+
+    Returns
+    -------
+    list of FunctionalDependency
+    """
+    result = list()
+    for obj in read_json(filename=outputfile)['functionalDependencies']:
+        fd = FunctionalDependency(
+            lhs=[colmap[c] for c in obj['lhs']],
+            rhs=[colmap[obj['rhs']]]
+        )
+        result.append(fd)
+    return result
