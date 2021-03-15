@@ -46,7 +46,7 @@ The HyFD algorithm (A Hybrid Approach to Functional Dependency Discovery) is a f
 ::
     Thorsten Papenbrock, Felix Naumann
     A Hybrid Approach to Functional Dependency Discovery
-    ACM International Conference on Management of Data (SIGMOD '16)See notebook for an example. the HyFD algorithm does ... See Paper form more details.
+    ACM International Conference on Management of Data (SIGMOD '16)
 
 
 For an example of how to use the algorithm in **openclean** have a look at the example notebook `Run HyFD Algorithm - Example <https://github.com/VIDA-NYU/openclean-metanome/blob/master/examples/notebooks/RunHyFD.ipynb>`_.
