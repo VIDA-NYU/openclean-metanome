@@ -24,7 +24,7 @@ def test_config_workers():
     factory = config.WORKERS()
     worker = factory.config['heikomueller/openclean-metanome:0.1.0']
     assert worker['worker'] == 'docker'
-    assert worker['arguments'] == {'variables': {'jar': 'lib/Metanome.jar'}}
+    assert worker['args'] == {'variables': {'jar': 'lib/Metanome.jar'}}
     # Get the default configuration.
     del os.environ[config.METANOME_WORKERS]
     factory = config.WORKERS()

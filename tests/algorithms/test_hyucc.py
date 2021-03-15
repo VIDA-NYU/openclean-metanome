@@ -44,6 +44,7 @@ def test_hyucc_algorithm_success(mock_subprocess, dataset):
     engine.
     """
     keys = hyucc(df=dataset)
+    print(keys)
     assert len(keys) == 2
     results = list()
     for ucc in keys:

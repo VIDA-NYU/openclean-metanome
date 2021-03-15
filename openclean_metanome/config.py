@@ -9,9 +9,9 @@
 openclean.
 """
 
-from typing import Dict, Optional
-
+from appdirs import user_cache_dir
 from flowserv.controller.worker.factory import WorkerFactory
+from typing import Dict, Optional
 
 import os
 
@@ -48,6 +48,9 @@ def CONTAINER(env: Optional[Dict] = None) -> str:
 def JARFILE(env: Optional[Dict] = None) -> str:
     """Get path to the Metanome.jar file from the environment.
 
+    By default, the jar file is expected to be in the OS-specific user
+    cache directory.
+    
     Parameters
     ----------
     env: dict, default=None
@@ -58,7 +61,8 @@ def JARFILE(env: Optional[Dict] = None) -> str:
     -------
     string
     """
-    default = os.environ.get(METANOME_JARPATH, 'Metanome.jar')
+    default_dir = user_cache_dir(appname=__name__.split('.')[0])
+    default = os.environ.get(METANOME_JARPATH, os.path.join(default_dir, 'Metanome.jar'))
     return env.get(METANOME_JARPATH, default) if env else default
 
 
