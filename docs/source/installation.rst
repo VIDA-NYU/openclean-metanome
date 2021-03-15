@@ -1,16 +1,4 @@
-=================================================
-Integration of Metanome Algorithms into openclean
-=================================================
-
-.. image:: https://img.shields.io/badge/License-BSD-green.svg
-    :target: https://github.com/VIDA-NYU/openclean-metanome/blob/master/LICENSE
-
-
-About
-=====
-
-This package is an extension for the `openclean-core package <https://github.com/VIDA-NYU/openclean-core>`_. It provides access to data profiling algorithms from the `Metanome project <https://github.com/HPI-Information-Systems/Metanome>`_ in **openclean**. The algorithms themselves are executable via the `Metanome Wrapper <https://github.com/VIDA-NYU/openclean-metanome-algorithms>`_ that enables to run Metanome algorithms via the command line.
-
+.. _installation-ref:
 
 Installation & Configuration
 ============================
@@ -54,11 +42,12 @@ HyFD
 
 The HyFD algorithm (A Hybrid Approach to Functional Dependency Discovery) is a functional dependency discovery algorithm. Details about the algorithm can be found in:
 
-```
-Thorsten Papenbrock, Felix Naumann
-A Hybrid Approach to Functional Dependency Discovery
-ACM International Conference on Management of Data (SIGMOD '16)See notebook for an example. the HyFD algorithm does ... See Paper form more details.
-```
+
+::
+    Thorsten Papenbrock, Felix Naumann
+    A Hybrid Approach to Functional Dependency Discovery
+    ACM International Conference on Management of Data (SIGMOD '16)See notebook for an example. the HyFD algorithm does ... See Paper form more details.
+
 
 For an example of how to use the algorithm in **openclean** have a look at the example notebook `Run HyFD Algorithm - Example <https://github.com/VIDA-NYU/openclean-metanome/blob/master/examples/notebooks/RunHyFD.ipynb>`_.
 
@@ -66,6 +55,6 @@ For an example of how to use the algorithm in **openclean** have a look at the e
 HyUCC
 -----
 
-The HyUCC algorithm (A Hybrid Approach for Efficient Unique Column Combination Discovery) is a unique column combination discovery. Details about the algorithm `can be found here <https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/2017/paper.pdf>`_`.
+The HyUCC algorithm (A Hybrid Approach for Efficient Unique Column Combination Discovery) is a unique column combination discovery. Details about the algorithm `can be found here <https://hpi.de/fileadmin/user_upload/fachgebiete/naumann/publications/2017/paper.pdf>`_.
 
 For an example of how to use the algorithm in **openclean** have a look at the example notebook `Run HyUCC Algorithm - Example <https://github.com/VIDA-NYU/openclean-metanome/blob/master/examples/notebooks/Run%20HyUCC.ipynb>`_.
