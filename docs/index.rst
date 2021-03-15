@@ -1,3 +1,10 @@
+.. image:: graphics/logo.png
+    :width: 350px
+    :align: center
+    :height: 80px
+    :alt: openclean-logo
+
+
 Welcome to openclean's Metanome Wrapper Documentation!
 ======================================================
 

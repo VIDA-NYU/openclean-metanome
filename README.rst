@@ -6,6 +6,12 @@ Integration of Metanome Algorithms into openclean
     :target: https://github.com/VIDA-NYU/openclean-metanome/blob/master/LICENSE
 
 
+.. figure:: https://github.com/VIDA-NYU/openclean-metanome/blob/master/docs/graphics/logo.png
+    :align: center
+    :alt: openclean Logo
+
+
+
 About
 =====
 
