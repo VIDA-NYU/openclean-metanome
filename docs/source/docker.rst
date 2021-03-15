@@ -1,4 +1,5 @@
-========================================
+.. _docker-ref:
+
 Docker Container for Metanome Algorithms
 ========================================
 

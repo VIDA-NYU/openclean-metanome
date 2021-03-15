@@ -24,17 +24,22 @@ tests_require = [
     'coverage>=4.0',
     'pytest',
     'pytest-cov',
-    'tox'
+    'tox',
+    'docker'
+]
+
+
+docs_require = [
+    'Sphinx',
+    'sphinx-rtd-theme',
+    'sphinxcontrib-apidoc'
 ]
 
 
 extras_require = {
-    'docs': [
-        'Sphinx',
-        'sphinx-rtd-theme'
-    ],
-    'tests': tests_require + ['docker'],
-    'dev': tests_require + ['docker']
+    'docs': docs_require,
+    'tests': tests_require,
+    'dev': tests_require + docs_require
 }
 
 
