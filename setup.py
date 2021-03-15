@@ -33,8 +33,8 @@ extras_require = {
         'Sphinx',
         'sphinx-rtd-theme'
     ],
-    'tests': tests_require,
-    'dev': ['docker'] + tests_require
+    'tests': tests_require + ['docker'],
+    'dev': tests_require + ['docker']
 }
 
 
