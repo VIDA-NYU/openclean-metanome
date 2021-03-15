@@ -5,6 +5,8 @@
 # openclean is released under the Revised BSD License. See file LICENSE for
 # full license details.
 
+"""Helper function to download the Metanome.jar file tha is hosted on Zenodo."""
+
 from refdata.base import DatasetDescriptor
 from refdata.store.base import download_file
 from typing import Optional

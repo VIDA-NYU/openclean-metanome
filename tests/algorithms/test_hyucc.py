@@ -15,6 +15,7 @@ import pytest
 import subprocess
 
 from openclean_metanome.algorithm.hyucc import hyucc
+from openclean_metanome.tests import input_output
 
 
 # -- Patching for subprocess step execution -----------------------------------
@@ -27,10 +28,9 @@ def mock_subprocess(monkeypatch):
     """Run container step for hyfd algorithm."""
     def mock_run(*args, **kwargs):
         rundir = kwargs['cwd']
-        inputfile = os.path.join(rundir, args[0].split()[5][1:-1])
+        inputfile, outputfile = input_output(rundir, args[0])
         if not os.path.isfile(inputfile):
             raise ValueError('file {} not found'.format(inputfile))
-        outputfile = os.path.join(rundir, args[0].split()[7][1:-1])
         doc = {'columnCombinations': [['COL1'], ['COL0', 'COL2']]}
         with open(outputfile, 'w') as f:
             json.dump(doc, f)
