@@ -1,5 +1,6 @@
-# Metanome Data Profiling Algorithms for the Open Data Cleaning Library - Changelog
+# Metanome Data Profiling Algorithms for the openclean Library - Changelog
 
-### 0.1.0 - TBD
 
-* Initial commit
+### 0.1.0 - 2021-03-15
+
+* Initial release
