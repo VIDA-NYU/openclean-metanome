@@ -10,9 +10,6 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
-
 
 # -- Project information -----------------------------------------------------
 
@@ -52,7 +49,7 @@ apidoc_module_dir = '../openclean_metanome/'
 apidoc_output_dir = 'source/api'
 apidoc_separate_modules = True
 apidoc_module_first = True
-apidoc_extra_args = ['-d 3','--force']
+apidoc_extra_args = ['-d 3', '--force']
 
 
 # -- Options for HTML output -------------------------------------------------
