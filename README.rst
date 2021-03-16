@@ -2,8 +2,21 @@
 Integration of Metanome Algorithms into openclean
 =================================================
 
+.. image:: https://img.shields.io/pypi/pyversions/openclean-metanome.svg
+    :target: https://pypi.org/pypi/openclean-metanome
+
+.. image:: https://badge.fury.io/py/openclean-metanome.svg
+    :target: https://badge.fury.io/py/openclean-metanome
+
 .. image:: https://img.shields.io/badge/License-BSD-green.svg
     :target: https://github.com/VIDA-NYU/openclean-metanome/blob/master/LICENSE
+
+.. image:: https://readthedocs.org/projects/openclean-metanome/badge/?version=latest
+    :target: https://openclean-metanome.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
+.. image:: https://codecov.io/gh/VIDA-NYU/openclean-metanome/branch/master/graph/badge.svg?token=VL43CKXZEF
+    :target: https://codecov.io/gh/VIDA-NYU/openclean-metanome
 
 
 .. figure:: https://github.com/VIDA-NYU/openclean-metanome/blob/master/docs/graphics/logo.png
