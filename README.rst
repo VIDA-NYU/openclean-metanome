@@ -11,6 +11,9 @@ Integration of Metanome Algorithms into openclean
 .. image:: https://img.shields.io/badge/License-BSD-green.svg
     :target: https://github.com/VIDA-NYU/openclean-metanome/blob/master/LICENSE
 
+.. image:: https://github.com/VIDA-NYU/openclean-metanome/workflows/build/badge.svg
+    :target: https://github.com/VIDA-NYU/openclean-metanome/actions?query=workflow%3A%22build%22
+
 .. image:: https://readthedocs.org/projects/openclean-metanome/badge/?version=latest
     :target: https://openclean-metanome.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
