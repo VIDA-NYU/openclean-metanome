@@ -10,12 +10,11 @@ openclean.
 """
 
 from appdirs import user_cache_dir
-from flowserv.controller.worker.factory import WorkerFactory
+from flowserv.controller.worker.manager import Docker  # noqa: F401
+from flowserv.util import read_object
 from typing import Dict, Optional
 
 import os
-
-import openclean.config as occ
 
 
 """Environment variables to configure the Metanome package."""
@@ -23,8 +22,10 @@ import openclean.config as occ
 METANOME_CONTAINER = 'METANOME_CONTAINER'
 # Path to the Metanome.jar file
 METANOME_JARPATH = 'METANOME_JARPATH'
+# Path to worker-specific storage volume.
+METANOME_VOLUME = 'METANOME_VOLUME'
 # Path to the package specific worker configuration.
-METANOME_WORKERS = 'METANOME_WORKERS'
+METANOME_WORKER = 'METANOME_WORKER'
 
 
 def CONTAINER(env: Optional[Dict] = None) -> str:
@@ -35,7 +36,7 @@ def CONTAINER(env: Optional[Dict] = None) -> str:
     ----------
     env: dict, default=None
         Optional environment variables that override the system-wide
-        settings., defualt=None
+        settings, default=None
 
     Returns
     -------
@@ -50,12 +51,12 @@ def JARFILE(env: Optional[Dict] = None) -> str:
 
     By default, the jar file is expected to be in the OS-specific user
     cache directory.
-    
+
     Parameters
     ----------
     env: dict, default=None
         Optional environment variables that override the system-wide
-        settings., defualt=None
+        settings, default=None
 
     Returns
     -------
@@ -66,19 +67,63 @@ def JARFILE(env: Optional[Dict] = None) -> str:
     return env.get(METANOME_JARPATH, default) if env else default
 
 
-def WORKERS(env: Optional[Dict] = None) -> WorkerFactory:
-    """Create a worker factory for serial workflow execution from
-    the default configuration and the package-specific configuration
-    file.
+def VOLUME(env: Optional[Dict] = None) -> Dict:
+    """Get specification for the volume that is associated with the worker that
+    is used to execute the main algorithm step.
 
     Parameters
     ----------
     env: dict, default=None
         Optional environment variables that override the system-wide
-        settings., defualt=None
+        settings, default=None
 
     Returns
     -------
-    flowserv.controller.serial.worker.factory.WorkerFactory
+    dict
     """
-    return occ.WORKERS(var=METANOME_WORKERS, env=env)
+    return read_config_obj(var=METANOME_VOLUME, env=env if env is not None else os.environ)
+
+
+def WORKER(env: Optional[Dict] = None) -> Dict:
+    """Get specification for the worker that is used to execute the main
+    algorithm step using the metanome wrapper Jar-file.
+
+    Parameters
+    ----------
+    env: dict, default=None
+        Optional environment variables that override the system-wide
+        settings, default=None
+
+    Returns
+    -------
+    dict
+    """
+    return read_config_obj(var=METANOME_WORKER, env=env if env is not None else os.environ)
+
+
+# -- Helper Methods -----------------------------------------------------------
+
+def read_config_obj(var: str, env: Dict) -> Dict:
+    """Read configuration object from a given environment variables.
+
+    If the variable is set and contains a dictionary as value that value is
+    returned. Otherwise, it is assumed that the variable references a Json or
+    Yaml file that contains the configuration object.
+
+    Parameters
+    ----------
+    var: string
+        Name of the environment variable.
+    env: dict
+        Dictionary representing the current environment settings.
+
+    Returns
+    -------
+    dict
+    """
+    obj = env.get(var)
+    if not obj:
+        return None
+    if isinstance(obj, dict):
+        return obj
+    return read_object(filename=obj)

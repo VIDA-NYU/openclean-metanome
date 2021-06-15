@@ -14,22 +14,22 @@ import tempfile
 
 from flowserv.controller.serial.workflow.base import SerialWorkflow
 from flowserv.controller.serial.workflow.result import RunResult
-from flowserv.controller.worker.factory import WorkerFactory
-
-import openclean_metanome.config as config
+from flowserv.controller.worker.manager import WorkerPool
+from flowserv.volume.fs import FStore
+from flowserv.volume.manager import VolumeManager, DEFAULT_STORE
 
 
 """Names for input and output files for the Metanome algorithms."""
-IN_FILE = 'table.csv'
-OUT_FILE = 'results.json'
+DATA_FILE = os.path.join('data', 'table.csv')
+RESULT_FILE = os.path.join('data', 'results.json')
 
 
 # -- Helper Methods -----------------------------------------------------------
 
 def run_workflow(
     workflow: SerialWorkflow, arguments: Dict, df: pd.DataFrame,
-    workers: Optional[WorkerFactory] = None, env: Optional[Dict] = None,
-    verbose: Optional[bool] = True
+    worker: Optional[Dict] = None, volume: Optional[Dict] = None,
+    managers: Optional[Dict] = None, verbose: Optional[bool] = True
 ) -> RunResult:
     """Run a given workflow representing a Metanome profiling algorithm on the
     given data frame.
@@ -38,7 +38,7 @@ def run_workflow(
     RuntimeError will be raised.
 
     This implementation assumes that all algorithms operate on a single input
-    file that contains a serializatio of the data frame and that they all
+    file that contains a serialization of the data frame and that they all
     produce a single output file in Json format.
 
     Parameters
@@ -50,11 +50,14 @@ def run_workflow(
         Dictionary of algorithm-specific input arguments.
     df: pd.DataFrame
         Input data frame.
-    workers: flowserv.controller.worker.factory.WorkerFactory, default=None
-        Optional worker configuration.
-    env: dict, default=None
-        Optional environment variables that override the system-wide
-        settings., defualt=None
+    worker: dict, default=None
+        Optional configuration for the main worker.
+    volume: dict, default=None
+        Optional configuration for the volume that is associated with the main
+        worker.
+    managers: dict, default=None
+        Mapping of workflow step identifier to the worker that is used to
+        execute them.
     verbose: bool, default=True
         Output run logs if True.
 
@@ -69,17 +72,26 @@ def run_workflow(
     # be mounted automatically as volumes into the container to provide
     # access to the files.
     os.makedirs(os.path.join(rundir, 'data'))
-    # Create a copy of the static arguments and add the data frame and the input
-    # and output files.
+    # Create a copy of the workflow-specific arguments and add the data frame
+    # and the input and output files.
     args = dict(arguments)
     args['df'] = df
-    args['inputfile'] = os.path.join('data', IN_FILE)
-    args['outputfile'] = os.path.join('data', OUT_FILE)
-    # Ensuer that the worker factory is set.
-    workers = workers if workers else config.WORKERS(env=env)
+    args['inputfile'] = DATA_FILE
+    args['outputfile'] = RESULT_FILE
+    # Create factory objects for storage volumes.
+    stores = [FStore(basedir=rundir, identifier=DEFAULT_STORE)]
+    if volume:
+        stores.append(volume)
+    volumes = VolumeManager(stores=stores, files=[])
+    # Create factory for workers. Include mapping of workflow steps to
+    # the worker that are responsible for their execution.
+    workers = WorkerPool(workers=[worker] if worker else [], managers=managers)
+    # Run the workflow and return the result. Make sure to cleanup the temporary
+    # run filder. This assumes that the workflow steps have read any output
+    # file into main memory or copied it to a target destination.
     try:
-        r = workflow.run(arguments=args, workers=workers, rundir=rundir)
-        # Output STODUT and STDERR before raising a potential error.
+        r = workflow.run(arguments=args, workers=workers, volumes=volumes)
+        # Output STDOUT and STDERR before raising a potential error.
         if verbose:
             for line in r.log:
                 print(line)

@@ -14,9 +14,10 @@ from setuptools import setup, find_packages
 
 
 install_requires = [
-    'openclean-core>=0.1.1',
+    'appdirs>=1.4.4',
+    'flowserv-core>=0.9.0',
     'refdata>=0.2.0',
-    'appdirs>=1.4.4'
+    'openclean-core>=0.4.1'
 ]
 
 

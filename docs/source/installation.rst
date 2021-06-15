@@ -28,7 +28,7 @@ The example will download the jar file into the default directory (defined via t
 Docker
 ------
 
-If you have `Docker installed on your machine <https://docs.docker.com/get-docker/>`_ you can run Metanome using the provided Docker container image. To do so, make sure that the environment variable *METANOME_WORKERS* references the configuration file ``docker_worker.yaml`` that is `included in the config folder of this repository <https://github.com/VIDA-NYU/openclean-metanome/blob/master/config/docker_worker.yaml>`_.
+If you have `Docker installed on your machine <https://docs.docker.com/get-docker/>`_ you can run Metanome using the provided Docker container image. To do so, make sure that the environment variable *METANOME_WORKER* references the configuration file ``docker_worker.yaml`` that is `included in the config folder of this repository <https://github.com/VIDA-NYU/openclean-metanome/blob/master/config/docker_worker.yaml>`_.
 
 
 Algorithms
