@@ -25,9 +25,9 @@ from typing import Dict, List, Optional
 import pandas as pd
 
 from flowserv.controller.serial.workflow.base import SerialWorkflow
-from flowserv.controller.worker.factory import WorkerFactory
+from flowserv.controller.worker.manager import WORKER_ID
 from openclean.profiling.constraints.fd import FunctionalDependency, FunctionalDependencyFinder
-from openclean_metanome.algorithm.base import run_workflow
+from openclean_metanome.algorithm.base import run_workflow, DATA_FILE, RESULT_FILE
 from openclean_metanome.converter import read_json, write_dataframe
 
 import openclean_metanome.config as config
@@ -36,8 +36,8 @@ import openclean_metanome.config as config
 def hyfd(
     df: pd.DataFrame, max_lhs_size: int = -1, input_row_limit: int = -1,
     validate_parallel: bool = False, memory_guardian: bool = True,
-    null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
-    env: Optional[Dict] = None, verbose: Optional[bool] = True
+    null_equals_null: bool = True, env: Optional[Dict] = None,
+    verbose: Optional[bool] = True
 ) -> List[FunctionalDependency]:
     """Run the HyFD algorithm on a given data frame. HyFD is a hybrid
     discovery algorithm for functional dependencies.
@@ -59,11 +59,9 @@ def hyfd(
         Activate the memory guarding to prevent out of memory errors,
     null_equals_null: bool, default=True
         Result value when comparing two NULL values.
-    workers: flowserv.controller.worker.factory.WorkerFactory, default=None
-        Optional worker configuration.
     env: dict, default=None
         Optional environment variables that override the system-wide
-        settings., defualt=None
+        settings, default=None
     verbose: bool, default=True
         Output run logs if True.
 
@@ -77,7 +75,6 @@ def hyfd(
         validate_parallel=validate_parallel,
         memory_guardian=memory_guardian,
         null_equals_null=null_equals_null,
-        workers=workers,
         env=env,
         verbose=verbose
     ).run(df)
@@ -96,8 +93,8 @@ class HyFD(FunctionalDependencyFinder):
     def __init__(
         self, max_lhs_size: int = -1, input_row_limit: int = -1,
         validate_parallel: bool = False, memory_guardian: bool = True,
-        null_equals_null: bool = True, workers: Optional[WorkerFactory] = None,
-        env: Optional[Dict] = None, verbose: Optional[bool] = True
+        null_equals_null: bool = True, env: Optional[Dict] = None,
+        verbose: Optional[bool] = True
     ):
         """Initialize the algorithm parameters.
 
@@ -116,8 +113,6 @@ class HyFD(FunctionalDependencyFinder):
             Activate the memory guarding to prevent out of memory errors,
         null_equals_null: bool, default=True
             Result value when comparing two NULL values.
-        workers: flowserv.controller.worker.factory.WorkerFactory, default=None
-            Optional worker configuration.
         env: dict, default=None
             Optional environment variables that override the system-wide
             settings, default=None.
@@ -144,7 +139,6 @@ class HyFD(FunctionalDependencyFinder):
             'memory_guardian': '--memory-guardian' if memory_guardian else '',
             'null_equals_null': '--null-equals-null' if null_equals_null else ''
         }
-        self.workers = workers
         self.env = env
         self.verbose = verbose
 
@@ -163,6 +157,9 @@ class HyFD(FunctionalDependencyFinder):
         -------
         list of FunctionalDependency
         """
+        # Get values for specific worker and volume from the environment.
+        volume = config.VOLUME(env=self.env)
+        worker = config.WORKER(env=self.env)
         # Define the serial workflow for running the HyFD algorithm.
         command = (
             '${java} -jar "${jar}" hyfd '
@@ -170,20 +167,40 @@ class HyFD(FunctionalDependencyFinder):
             '--max-lhs-size ${max_lhs_size} --input-row-limit ${input_row_limit} '
             '${validate_parallel} ${memory_guardian} ${null_equals_null}'
         )
-        workflow = SerialWorkflow()\
-            .add_step(func=write_dataframe, output='colmap', varnames={'filename': 'inputfile'})\
-            .add_step(image=config.CONTAINER(env=self.env), commands=[command])\
-            .add_step(func=parse_result, output='fds')
+        workflow = SerialWorkflow()
+        workflow.add_code_step(
+            identifier='__s1__',
+            func=write_dataframe,
+            arg='colmap',
+            varnames={'filename': 'inputfile'},
+            outputs=[DATA_FILE]
+        )
+        workflow.add_container_step(
+            identifier='__s2__',
+            image=config.CONTAINER(env=self.env),
+            commands=[command],
+            inputs=[DATA_FILE],
+            outputs=[RESULT_FILE]
+        )
+        workflow.add_code_step(
+            identifier='__s3__',
+            func=parse_result,
+            arg='fds',
+            inputs=[RESULT_FILE]
+        )
         r = run_workflow(
             workflow=workflow,
             arguments=self.args,
             df=df,
-            workers=self.workers,
-            env=self.env,
+            worker=worker,
+            volume=volume,
+            managers={'__s2__': worker[WORKER_ID]} if worker else None,
             verbose=self.verbose
         )
         return r.context['fds']
 
+
+# -- Result Function ----------------------------------------------------------
 
 def parse_result(outputfile: str, colmap: Dict) -> List[FunctionalDependency]:
     """Parse the result file of the FD discovery run to generate a list of

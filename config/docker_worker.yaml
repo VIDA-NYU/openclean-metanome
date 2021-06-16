@@ -1,5 +1,2 @@
-- image: 'heikomueller/openclean-metanome:0.1.0'
-  worker: 'docker'
-  args:
-      variables:
-          jar: 'lib/Metanome.jar'
+name: "docker_worker"
+type: "docker"
